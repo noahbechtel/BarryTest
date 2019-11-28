@@ -1,56 +1,37 @@
 import axios from 'axios'
 import history from '../history'
 
-/**
- * ACTION TYPES
- */
-const GET_USER = 'GET_USER'
-const REMOVE_USER = 'REMOVE_USER'
+const GET_ACCESS = 'GET_ACCESS'
+const GET_CONTENT = 'GET_CONTENT'
 
-/**
- * INITIAL STATE
- */
-const defaultUser = {}
+export const setAccess = access => ({type: GET_ACCESS, access})
+const setContent = content => ({type: GET_CONTENT, content})
 
-/**
- * ACTION CREATORS
- */
-const getUser = user => ({type: GET_USER, user})
-const removeUser = () => ({type: REMOVE_USER})
-
-/**
- * THUNK CREATORS
- */
-export const me = () => async dispatch => {
+export const lock = () => async dispatch => {
   try {
-    const res = await axios.get('/auth/me')
-    dispatch(getUser(res.data || defaultUser))
+    await axios.get('/api/content/lock')
+    dispatch(setAccess(false))
   } catch (err) {
     console.error(err)
   }
 }
-
-export const auth = (email, password, method) => async dispatch => {
-  let res
+export const unlock = () => async dispatch => {
   try {
-    res = await axios.post(`/auth/${method}`, {email, password})
-  } catch (authError) {
-    return dispatch(getUser({error: authError}))
-  }
-
-  try {
-    dispatch(getUser(res.data))
-    history.push('/home')
-  } catch (dispatchOrHistoryErr) {
-    console.error(dispatchOrHistoryErr)
+    await axios.get('/api/content/unlock')
+    dispatch(setAccess(true))
+  } catch (err) {
+    console.error(err)
   }
 }
-
-export const logout = () => async dispatch => {
+export const getStatus = () => async dispatch => {
   try {
-    await axios.post('/auth/logout')
-    dispatch(removeUser())
-    history.push('/login')
+    const {data} = await axios.get('/api/content/status')
+    dispatch(setContent(data))
+    if (data[0].locked) {
+      dispatch(setAccess(false))
+    } else {
+      dispatch(setAccess(true))
+    }
   } catch (err) {
     console.error(err)
   }
@@ -59,12 +40,13 @@ export const logout = () => async dispatch => {
 /**
  * REDUCER
  */
-export default function(state = defaultUser, action) {
+export default function(state = {}, action) {
   switch (action.type) {
-    case GET_USER:
-      return action.user
-    case REMOVE_USER:
-      return defaultUser
+    case GET_ACCESS:
+      return {...state, access: action.access}
+    case GET_CONTENT:
+      return {...state, content: action.content}
+
     default:
       return state
   }
